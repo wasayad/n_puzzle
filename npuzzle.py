@@ -1,3 +1,4 @@
+from distutils.log import error
 import operator
 import sys
 import math
@@ -19,7 +20,7 @@ class Node:
 
             
 class Npuzzle:
-    def __init__(self, goal_map = []):
+    def __init__(self, goal_map):
         self.map = []
         self.goal_map = goal_map
         
@@ -40,9 +41,9 @@ class Npuzzle:
             self.map = [list(map(int, i)) for i in self.map]
             self.map = np.array(self.map)
 
-    def get_heuristic(self, actual_map):
+    def get_heuristic(self, actual_map, goal_map):
         heuristic = 0
-        for index, i in enumerate(self.goal_map):
+        for index, i in enumerate(goal_map):
             for index1, j in enumerate(i):
                 for idx, y in enumerate(actual_map):
                     for idx1, x in enumerate(y):
@@ -123,7 +124,7 @@ class Npuzzle:
 
 def astar(map, start, end):
 
-    npuzzle = Npuzzle()
+    npuzzle = Npuzzle([])
       
     start_node = Node(start)
     start_node.cost_so_far = start_node.heuristic = start_node.total_cost = 0
@@ -147,11 +148,12 @@ def astar(map, start, end):
       
         open_list.pop(current_index)
         closed_list.append(current_node)
-        open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
+        #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
 
         print(current_node.map)
+        print("\n")
         if (current_node.map == end_node.map).all():
-            print(current_node.map)
+            print("GG")
             path = []
             current = current_node
             while current is not None:
@@ -161,18 +163,25 @@ def astar(map, start, end):
         
         children = npuzzle.generate_children(current_node.map)
 
-
         for child in children:
-            for closed_child in closed_list:
-                if (child.map == closed_child.map).all():
-                    continue
+
+            try:
+                for closed_child in closed_list:
+                    if (child.map == closed_child.map).all():
+                        raise Exception
+            except Exception:
+                continue
+            
             child.cost_so_far = current_node.cost_so_far + 1
-            child.heuristic = npuzzle.get_heuristic(current_node.map)
+            child.heuristic = npuzzle.get_heuristic(child.map, end_node.map)
             child.total_cost = child.cost_so_far + child.heuristic
 
-            for open_node in open_list:
-                if (child.map == open_node.map).all() and child.cost_so_far > open_node.cost_so_far:
-                    continue
+            try:
+                for open_node in open_list:
+                    if (child.map == open_node.map).all() and child.cost_so_far > open_node.cost_so_far:
+                        raise Exception
+            except Exception:
+                continue
             open_list.append(child)
 
 
