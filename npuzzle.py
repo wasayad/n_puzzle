@@ -148,12 +148,10 @@ def astar(map, start, end):
       
         open_list.pop(current_index)
         closed_list.append(current_node)
-        #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
 
         print(current_node.map)
         print("\n")
         if (current_node.map == end_node.map).all():
-            print("GG")
             path = []
             current = current_node
             while current is not None:
@@ -167,7 +165,7 @@ def astar(map, start, end):
 
             try:
                 for closed_child in closed_list:
-                    if (child.map == closed_child.map).all():
+                    if (child.map == closed_child.map).all() and child.cost_so_far > closed_child.cost_so_far:
                         raise Exception
             except Exception:
                 continue
