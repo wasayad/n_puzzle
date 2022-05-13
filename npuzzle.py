@@ -138,20 +138,20 @@ def astar(map, start, end):
 
     while len(open_list) != 0:
           
+        open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
         current_node = open_list[0]
         current_index = 0
 
-        for index, i in enumerate(open_list):
-            if i.total_cost < current_node.total_cost:
-                current_node = i
-                current_index = index
+        #for index, i in enumerate(open_list):
+        #    if i.total_cost < current_node.total_cost:
+        #        current_node = i
+        #        current_index = index
       
         open_list.pop(current_index)
         closed_list.append(current_node)
-        #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
 
-        print(current_node.map)
-        print("\n")
+        #print(current_node.map)
+        #print("\n")
         if (current_node.map == end_node.map).all():
             print("GG")
             path = []
