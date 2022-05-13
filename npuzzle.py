@@ -2,13 +2,15 @@ from distutils.log import error
 import operator
 import sys
 import math
+from xml.etree.ElementTree import tostring
 import numpy as np
 from pandas import to_numeric
 
 class Node:
-   def __init__(self, map = [], parent = None, position = None):
+   def __init__(self, map = [], id = "", parent = None, position = None):
           
           self.map = map
+          self.id = id
 
           self.parent = parent
           self.position = position
@@ -98,6 +100,13 @@ class Npuzzle:
             return []
         return tmp_map
 
+    def map_to_str(self, map):
+        res = ""
+        for i in map:
+            for j in i:
+                res += str(j)
+        return res
+
     def generate_children(self, map):
 
         children = []
@@ -105,55 +114,69 @@ class Npuzzle:
 
         pos = self.move(map, blank_space, [blank_space[0], blank_space[1] - 1])
         if blank_space[1] != 0 and len(pos):
-            children.append(Node(pos))
+            children.append(Node(pos, self.map_to_str(pos)))
         
         pos = self.move(map, blank_space, [blank_space[0], blank_space[1] + 1])
         if blank_space[1] != len(map) - 1 and len(pos):
-            children.append(Node(pos))
+            children.append(Node(pos, self.map_to_str(pos)))
 
         pos = self.move(map, blank_space, [blank_space[0] - 1, blank_space[1]])
         if blank_space[0] != 0 and len(pos):
-            children.append(Node(pos))
+            children.append(Node(pos, self.map_to_str(pos)))
         
         pos = self.move(map, blank_space, [blank_space[0] + 1, blank_space[1]])
         if blank_space[0] != len(map) - 1 and len(pos):
-            children.append(Node(pos))
+            children.append(Node(pos, self.map_to_str(pos)))
 
         return children
 
+    def check_dict(self, openDict, child):
+        if child.id in openDict:
+            return openDict[child.id].total_cost < child.total_cost
+        return False
+
+    def check_in_closed(self, closedDict, child):
+        if child.id in closedDict:
+            return True
+        return False
 
 def astar(map, start, end):
 
     npuzzle = Npuzzle([])
       
-    start_node = Node(start)
+    start_node = Node(start, npuzzle.map_to_str(start))
     start_node.cost_so_far = start_node.heuristic = start_node.total_cost = 0
     end_node = Node(end)
     end_node.cost_so_far = end_node.heuristic = end_node.total_cost = 0
 
     open_list = []
+    open_dict = {}
+    closed_dict = {}
     closed_list = []
 
     open_list.append(start_node)
 
     while len(open_list) != 0:
-          
-        open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
+
+        print(len(open_list))
+        #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
         current_node = open_list[0]
         current_index = 0
 
-        #for index, i in enumerate(open_list):
-        #    if i.total_cost < current_node.total_cost:
-        #        current_node = i
-        #        current_index = index
+        for index, i in enumerate(open_list):
+            if i.total_cost < current_node.total_cost:
+                current_node = i
+                current_index = index
       
         open_list.pop(current_index)
         closed_list.append(current_node)
+        closed_dict[current_node.id] = current_node
 
         #print(current_node.map)
         #print("\n")
         if (current_node.map == end_node.map).all():
-            print("GG")
+            print(current_node.map)
+            exit(1)
             path = []
             current = current_node
             while current is not None:
@@ -165,24 +188,18 @@ def astar(map, start, end):
 
         for child in children:
 
-            try:
-                for closed_child in closed_list:
-                    if (child.map == closed_child.map).all():
-                        raise Exception
-            except Exception:
+            if npuzzle.check_in_closed(closed_dict, child):
                 continue
             
             child.cost_so_far = current_node.cost_so_far + 1
             child.heuristic = npuzzle.get_heuristic(child.map, end_node.map)
             child.total_cost = child.cost_so_far + child.heuristic
 
-            try:
-                for open_node in open_list:
-                    if (child.map == open_node.map).all() and child.cost_so_far > open_node.cost_so_far:
-                        raise Exception
-            except Exception:
+            if npuzzle.check_dict(open_dict, child):
                 continue
+
             open_list.append(child)
+            open_dict[child.id] = child
 
 
     
