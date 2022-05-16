@@ -1,8 +1,5 @@
-from distutils.log import error
-import operator
 import sys
 import math
-from xml.etree.ElementTree import tostring
 import numpy as np
 from pandas import to_numeric
 
@@ -100,6 +97,66 @@ class Npuzzle:
             return []
         return tmp_map
 
+    def get_invert_count(self):
+        flat_map = []
+        flat_goal_map = []
+        invert_count = 0
+
+        for i in self.map:
+            for j in i:
+                if j != 0:
+                    flat_map.append(j)
+        for i in self.goal_map:
+            for j in i:
+                if j != 0:
+                    flat_goal_map.append(j)
+        
+        for idx, i in enumerate(flat_map):
+            for j in flat_goal_map[idx:]:
+                if i > j:
+                    invert_count += 1
+
+        return invert_count
+
+    def check_solvable(self):
+
+        blank_space = self.find_blank_space(self.map)
+        invert_count = self.get_invert_count()
+        if len(self.map) % 2 == 0:
+            if (len(self.map) - blank_space[0]) % 2 == 0 and invert_count % 2 != 0:
+                return True
+            elif (len(self.map) - blank_space[0]) % 2 != 0 and invert_count % 2 == 0:
+                return True
+        elif len(self.map) % 2 != 0 and invert_count % 2 == 0:
+            return True
+        return False
+
+    
+    def get_taxicab_distance(self, puzzle, solved, size):
+        pi = puzzle.index(0)
+        p1, p2 = pi // size, pi % size
+        qi = solved.index(0)
+        q1, q2 = qi // size, qi % size
+        return abs(p1 - q1) + abs(p2 - q2)
+
+
+    def count_inversions(self, puzzle, solved, size):
+        res = 0
+        for i in range(size * size - 1):
+            for j in range(i + 1, size * size):
+                vi = puzzle[i]
+                vj = puzzle[j]
+                if solved.index(vi) > solved.index(vj):
+                    res += 1
+        return res
+
+
+    def is_solvable(self, puzzle, solved, size):
+        taxicab_distance = self.get_taxicab_distance(puzzle, solved, size)
+        num_inversions = self.count_inversions(puzzle, solved, size)
+        return taxicab_distance % 2 == num_inversions % 2
+
+
     def map_to_str(self, map):
         res = ""
         for i in map:
@@ -158,7 +215,6 @@ def astar(map, start, end):
 
     while len(open_list) != 0:
 
-        print(len(open_list))
         #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
         current_node = open_list[0]
         current_index = 0
@@ -207,7 +263,21 @@ npuzzle = Npuzzle([])
 npuzzle.map_parser()
 npuzzle.generate_goal_map()
 
-start = npuzzle.map
-end = npuzzle.goal_map
+flat_map = []
+flat_goal_map = []
+for i in npuzzle.map:
+    for j in i:
+            flat_map.append(j)
+for i in npuzzle.goal_map:
+    for j in i:
+            flat_goal_map.append(j)
 
-algo = astar(npuzzle.map, start, end)
+if npuzzle.is_solvable(flat_map, flat_goal_map, len(npuzzle.map)):
+    print("Solving...")
+    start = npuzzle.map
+    end = npuzzle.goal_map
+
+    algo = astar(npuzzle.map, start, end)
+
+else:
+    print("Grid not solvable !")
