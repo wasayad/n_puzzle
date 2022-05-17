@@ -1,190 +1,58 @@
+from operator import attrgetter
 import sys
 import math
 import numpy as np
 from pandas import to_numeric
+from node import Node
+from  parser import Parser
+from heuristic import *
+from visualizer import *
 
-class Node:
-   def __init__(self, map = [], id = "", parent = None, position = None):
-          
-          self.map = map
-          self.id = id
-
-          self.parent = parent
-          self.position = position
-
-          self.cost_so_far = 0
-          self.heuristic = 0
-          self.total_cost = 0
-        
-
-            
 class Npuzzle:
-    def __init__(self, goal_map):
+    def __init__(self, size):
         self.map = []
-        self.goal_map = goal_map
-        
-    def map_parser(self):
-        # Parse the input file into a 2 dimensions tab
-        with open(sys.argv[1], "r") as f:
-            array_size = 0
-            flat_map = ""
-            for idx, line in enumerate(f):
-                if idx == 1:
-                    array_size = to_numeric(line)
-                elif idx > 1:
-                    flat_map = flat_map.replace("\n", " ") + line
-            flat_map = flat_map.split(" ")
-            for i in range(array_size**2):
-                if i % array_size == 0:
-                    self.map.append(flat_map[i:array_size + i])    
-            self.map = [list(map(int, i)) for i in self.map]
-            self.map = np.array(self.map)
+        self.size = size
 
-    def get_heuristic(self, actual_map, goal_map):
-        heuristic = 0
-        for index, i in enumerate(goal_map):
-            for index1, j in enumerate(i):
-                for idx, y in enumerate(actual_map):
-                    for idx1, x in enumerate(y):
-                        if (x == j and x != 0):
-                            heuristic += (abs(index - idx) + abs(index1 - idx1))
-        return heuristic
-
-    def generate_goal_map(self):
-        self.goal_map = np.zeros((len(self.map), len(self.map)), int)
-        size = len(self.map)
-        delimiter_x = 0
-        delimiter_y = 0
-        y = 0
-        x = 0
-        i = 1
-        for j in range(len(self.map)):
-            x = delimiter_x - 1 
-
-            while (x < size - delimiter_x - 1 and i != len(self.map)**2):
-                x += 1
-                self.goal_map[y][x] = i
-                i += 1
-            y = delimiter_y
-            while (y < size - delimiter_y - 1 and i != len(self.map)**2):
-                y += 1
-                self.goal_map[y][x] = i
-                i += 1
-            while (x > delimiter_x and i != len(self.map)**2):
-                x -= 1
-                self.goal_map[y][x] = i
-                i += 1
-            while (y > delimiter_y + 1 and i != len(self.map)**2):
-                y -= 1
-                self.goal_map[y][x] = i
-                i += 1
-            delimiter_x += 1
-            delimiter_y += 1
-        
-    def find_blank_space(self, map):
-        for y, i in enumerate(map):
-            for x, j in enumerate(i):
-                if (j == 0):
-                    return [y, x]
+    @staticmethod
+    def map_to_str(map):
+        res = ""
+        for i in map:
+            res += str(i)
+        return res
     
-    def move(self, map, pos, new_pos):
+    
+    @staticmethod
+    def move(map, pos, new_pos):
         try:
             tmp_map = np.array(map)
-            tmp = map[new_pos[0]][new_pos[1]]
-            tmp_map[new_pos[0]][new_pos[1]] = 0
-            tmp_map[pos[0]][pos[1]] = tmp
+            tmp = map[new_pos]
+            tmp_map[new_pos] = 0
+            tmp_map[pos] = tmp
         except:
             return []
         return tmp_map
 
-    def get_invert_count(self):
-        flat_map = []
-        flat_goal_map = []
-        invert_count = 0
 
-        for i in self.map:
-            for j in i:
-                if j != 0:
-                    flat_map.append(j)
-        for i in self.goal_map:
-            for j in i:
-                if j != 0:
-                    flat_goal_map.append(j)
-        
-        for idx, i in enumerate(flat_map):
-            for j in flat_goal_map[idx:]:
-                if i > j:
-                    invert_count += 1
-
-        return invert_count
-
-    def check_solvable(self):
-
-        blank_space = self.find_blank_space(self.map)
-        invert_count = self.get_invert_count()
-        if len(self.map) % 2 == 0:
-            if (len(self.map) - blank_space[0]) % 2 == 0 and invert_count % 2 != 0:
-                return True
-            elif (len(self.map) - blank_space[0]) % 2 != 0 and invert_count % 2 == 0:
-                return True
-        elif len(self.map) % 2 != 0 and invert_count % 2 == 0:
-            return True
-        return False
-
-    
-    def get_taxicab_distance(self, puzzle, solved, size):
-        pi = puzzle.index(0)
-        p1, p2 = pi // size, pi % size
-        qi = solved.index(0)
-        q1, q2 = qi // size, qi % size
-        return abs(p1 - q1) + abs(p2 - q2)
-
-
-    def count_inversions(self, puzzle, solved, size):
-        res = 0
-        for i in range(size * size - 1):
-            for j in range(i + 1, size * size):
-                vi = puzzle[i]
-                vj = puzzle[j]
-                if solved.index(vi) > solved.index(vj):
-                    res += 1
-        return res
-
-
-    def is_solvable(self, puzzle, solved, size):
-        taxicab_distance = self.get_taxicab_distance(puzzle, solved, size)
-        num_inversions = self.count_inversions(puzzle, solved, size)
-        return taxicab_distance % 2 == num_inversions % 2
-
-
-    def map_to_str(self, map):
-        res = ""
-        for i in map:
-            for j in i:
-                res += str(j)
-        return res
-
-    def generate_children(self, map):
+    def generate_children(self, map, parent):
 
         children = []
-        blank_space = self.find_blank_space(map)
+        blank_space = np.where(map == 0)[0][0]
 
-        pos = self.move(map, blank_space, [blank_space[0], blank_space[1] - 1])
-        if blank_space[1] != 0 and len(pos):
-            children.append(Node(pos, self.map_to_str(pos)))
+        pos = Npuzzle.move(map, blank_space, blank_space + 1)
+        if (blank_space + 1) % self.size != 0:
+            children.append(Node(pos, self.map_to_str(pos), parent))
+
+        pos = Npuzzle.move(map, blank_space, blank_space - 1)
+        if blank_space % self.size != 0:
+            children.append(Node(pos, self.map_to_str(pos), parent))
+
+        pos = Npuzzle.move(map, blank_space, blank_space - self.size)
+        if blank_space >= self.size:
+            children.append(Node(pos, self.map_to_str(pos), parent))
         
-        pos = self.move(map, blank_space, [blank_space[0], blank_space[1] + 1])
-        if blank_space[1] != len(map) - 1 and len(pos):
-            children.append(Node(pos, self.map_to_str(pos)))
-
-        pos = self.move(map, blank_space, [blank_space[0] - 1, blank_space[1]])
-        if blank_space[0] != 0 and len(pos):
-            children.append(Node(pos, self.map_to_str(pos)))
-        
-        pos = self.move(map, blank_space, [blank_space[0] + 1, blank_space[1]])
-        if blank_space[0] != len(map) - 1 and len(pos):
-            children.append(Node(pos, self.map_to_str(pos)))
-
+        pos = Npuzzle.move(map, blank_space, blank_space + self.size)
+        if blank_space + self.size < len(map):
+            children.append(Node(pos, self.map_to_str(pos), parent))
         return children
 
     def check_dict(self, openDict, child):
@@ -197,59 +65,49 @@ class Npuzzle:
             return True
         return False
 
-def astar(map, start, end):
-
-    npuzzle = Npuzzle([])
-      
-    start_node = Node(start, npuzzle.map_to_str(start))
-    start_node.cost_so_far = start_node.heuristic = start_node.total_cost = 0
+def astar(start, end, size):
+    npuzzle = Npuzzle(size)
+    start_node = Node(start, Npuzzle.map_to_str(start))
     end_node = Node(end)
+    
+    start_node.cost_so_far = start_node.heuristic = start_node.total_cost = 0
     end_node.cost_so_far = end_node.heuristic = end_node.total_cost = 0
 
     open_list = []
     open_dict = {}
-    closed_dict = {}
     closed_list = []
-
+    closed_dict = {}
     open_list.append(start_node)
 
     while len(open_list) != 0:
-
-        #open_list = sorted(open_list, key=operator.attrgetter('total_cost'))
-        current_node = open_list[0]
-        current_index = 0
-
-        for index, i in enumerate(open_list):
-            if i.total_cost < current_node.total_cost:
-                current_node = i
-                current_index = index
-      
-        open_list.pop(current_index)
+        current_node = min(reversed(open_list),key=attrgetter('total_cost'))
+        open_list.pop(open_list.index(current_node))
         closed_list.append(current_node)
         closed_dict[current_node.id] = current_node
 
-        #print(current_node.map)
-        #print("\n")
-        if (current_node.map == end_node.map).all():
-            print(current_node.map)
-            exit(1)
+        if np.equal(current_node.map, end_node.map).all():
+            print(current_node)
             path = []
             current = current_node
             while current is not None:
-                path.append(current.position)
+                path.append(current.map)
                 current = current.parent
+            open_list.clear()
+            closed_list.clear()
+            open_dict.clear()
+            closed_dict.clear()
             return path[::-1]
-        
-        children = npuzzle.generate_children(current_node.map)
 
+        children = npuzzle.generate_children(current_node.map, current_node)
+        print("Current node heuristic:",current_node.heuristic)
         for child in children:
 
             if npuzzle.check_in_closed(closed_dict, child):
                 continue
             
             child.cost_so_far = current_node.cost_so_far + 1
-            child.heuristic = npuzzle.get_heuristic(child.map, end_node.map)
-            child.total_cost = child.cost_so_far + child.heuristic
+            child.heuristic = linear_conflicts(child.map, end_node.map, size)
+            child.total_cost = child.cost_so_far // size + child.heuristic
 
             if npuzzle.check_dict(open_dict, child):
                 continue
@@ -258,26 +116,13 @@ def astar(map, start, end):
             open_dict[child.id] = child
 
 
-    
-npuzzle = Npuzzle([])
-npuzzle.map_parser()
-npuzzle.generate_goal_map()
+if __name__ == '__main__':
+    parser = Parser()
+    parser.map_parser()
+    parser.generate_goal_map()
 
-flat_map = []
-flat_goal_map = []
-for i in npuzzle.map:
-    for j in i:
-            flat_map.append(j)
-for i in npuzzle.goal_map:
-    for j in i:
-            flat_goal_map.append(j)
+    algo = astar(parser.map, parser.goal_map, parser.size)
+    for i in algo:
+        print(i)
+    visualizer(algo)
 
-if npuzzle.is_solvable(flat_map, flat_goal_map, len(npuzzle.map)):
-    print("Solving...")
-    start = npuzzle.map
-    end = npuzzle.goal_map
-
-    algo = astar(npuzzle.map, start, end)
-
-else:
-    print("Grid not solvable !")
