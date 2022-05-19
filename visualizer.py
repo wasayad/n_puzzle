@@ -20,19 +20,20 @@ def visualizer(path):
     
     global i
     i = 0
-    
-    def burst_mode(i):
-        labels = []
-        while (i < len(path)):
+    labels = []
+    def burst_mode(j):
+        while (j < len(path)):
             for label in labels:
                 label.destroy()
             labels.clear()
-            test = transform_array(path[i]).tolist()
+            test = transform_array(path[j]).tolist()
             for index, row in enumerate(test):
                 for index1, colum in enumerate(row):
                     e = Label(fen, text=colum, font=helv80, borderwidth=2, relief="ridge", width=(10//len(row)))
                     e.grid(row=index, column=index1)
                     labels.append(e)
+            j += 1
+            global i
             i += 1
             fen.update()
     
@@ -44,22 +45,26 @@ def visualizer(path):
             i += value
             if i < 0:
                 i = 0
+            elif i >= len(path):
+                i = len(path) - 1
+            for label in labels:
+                label.destroy()
+            labels.clear()
             if i != len(path):
                 test = transform_array(path[i]).tolist()
                 for index, row in enumerate(test):
                     for index1, colum in enumerate(row):
                         e = Label(fen, text=colum, font=helv80, borderwidth=2, relief="ridge", width=(10//len(row)))
                         e.grid(row=index, column=index1)
+                        labels.append(e)
                 fen.update()
 
     test = transform_array(path[i]).tolist()
 
-    label = Label(fen)
 
     #canvas = tk.Canvas(fen,width=1000,height=1000)
 
     helv80 = tkFont.Font(family='Helvetica', size=80)
-    helv40 = tkFont.Font(family='Helvetica', size=40)
 
     fen.rowconfigure((0, 0), weight=0)
     fen.columnconfigure((0, 0), weight=0)

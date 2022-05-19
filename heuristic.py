@@ -8,22 +8,11 @@ def manhattan_heuristic(size, actual_map, goal_map):
         heuristic += abs(index // size - val[0][0] // size) + abs(index % size - val[0][0] % size)
     return heuristic
     
-def tiles_out_of_place_heuristic(actual_map, goal_map):
+def tiles_out_of_place_heuristic(map, goal_map):
     heuristic = 0
-    flat_map = []
-    flat_goal_map = []
 
-    for i in actual_map:
-        for j in i:
-            if j != 0:
-                flat_map.append(j)
-    for i in goal_map:
-        for j in i:
-            if j != 0:
-                flat_goal_map.append(j)
-        
-    for idx, i in enumerate(flat_goal_map):
-        if i != flat_map[idx]:
+    for idx, i in enumerate(goal_map):
+        if i != map[idx]:
             heuristic += 1
     return heuristic
     
